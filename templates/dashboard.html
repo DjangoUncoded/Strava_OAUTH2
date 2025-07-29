@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard with Strava</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; display: flex; min-height: 100vh; }
+    nav { background: #333; color: #fff; padding: 1rem; width: 100%; position: fixed; top: 0; z-index: 1000; }
+    nav h1 { font-size: 1.5rem; }
+    .sidebar { background: #444; color: #ddd; width: 200px; padding: 2rem 1rem; margin-top: 60px; }
+    .sidebar a, .sidebar button { display: block; color: #ddd; text-decoration: none; margin: 0.5rem 0; background: none; border: none; cursor: pointer; font-size: 1rem; }
+    .sidebar a:hover, .sidebar button:hover { color: #fff; }
+    .main { flex: 1; margin-top: 60px; margin-left: 200px; padding: 1rem; background: #f4f4f4; min-height: calc(100vh - 60px); }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .card { background: #fff; border-radius: 5px; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 5px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table th, table td { padding: 0.75rem; border-bottom: 1px solid #ddd; text-align: left; }
+    table th { background: #f7f7f7; }
+
+    /* Strava specific styles */
+    .strava-section { margin-bottom: 2rem; }
+    .strava-profile { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .strava-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+    .strava-info h3 { margin: 0; color: #333; }
+    .strava-info p { margin: 0.25rem 0; color: #666; font-size: 0.9rem; }
+    .strava-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .stat-card { background: #fff; padding: 1rem; border-radius: 5px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .stat-value { font-size: 1.5rem; font-weight: bold; color: #fc4c02; }
+    .stat-label { font-size: 0.9rem; color: #666; margin-top: 0.25rem; }
+    .strava-not-connected { text-align: center; padding: 2rem; color: #666; }
+    .activities-table { max-height: 400px; overflow-y: auto; }
+    .loading { text-align: center; padding: 2rem; color: #666; }
+    .error { text-align: center; padding: 1rem; color: #d32f2f; background: #ffebee; border-radius: 5px; margin: 1rem 0; }
+    .strava-connect-btn {
+      background: #fc4c02;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin: 1rem 0;
+    }
+    .strava-connect-btn:hover { background: #e63900; }
+  </style>
+</head>
+<body>
+  <nav><h1>My Dashboard</h1></nav>
+
+  <aside class="sidebar">
+
+    <button onclick="window.location.href='/logout'">Logout</button>
+    <button id="strava-connect">Connect with Strava</button>
+
+    <button id="blog-page">Blog-Page</button>
+  </aside>
+
+  <main class="main">
+
+
+    <!-- Strava Profile Section -->
+    <div class="strava-section">
+      <div class="card">
+        <h2>🚴 Strava Profile</h2>
+        <div id="strava-content">
+          <div class="loading">Loading Strava data...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Strava Stats Section -->
+    <div class="strava-section" id="strava-stats-section" style="display: none;">
+      <div class="card">
+        <h2>📊 Activity Stats</h2>
+        <div id="strava-stats">
+          <div class="loading">Loading stats...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activities Section -->
+    <div class="strava-section" id="strava-activities-section" style="display: none;">
+      <div class="card">
+        <h2>🏃 Recent Activities</h2>
+        <div id="strava-activities">
+          <div class="loading">Loading activities...</div>
+        </div>
+      </div>
+    </div>
+
+
+  </main>
+
+  <script>
+    document.getElementById('strava-connect').addEventListener('click', () => {
+      // Trigger the FastAPI Strava auth endpoint
+      window.location.href = '/strava/auth';
+    });
+     document.getElementById('blog-page').addEventListener('click', () => {
+      // Trigger the FastAPI Strava auth endpoint
+      window.location.href = '/page';
+    });
+
+    // Function to format time from seconds
+    function formatTime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      }
+      return `${minutes}m`;
+    }
+
+    // Function to format date
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    }
+
+    // Load Strava profile data
+    async function loadStravaProfile() {
+      try {
+        const response = await fetch('/api/strava/profile');
+        const data = await response.json();
+
+        const stravaContent = document.getElementById('strava-content');
+
+        if (!data.connected) {
+          stravaContent.innerHTML = `
+            <div class="strava-not-connected">
+              <p>Connect your Strava account to see your profile and activity data.</p>
+              <button class="strava-connect-btn" onclick="window.location.href='/strava/auth'">
+                Connect with Strava
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        const profile = data.profile;
+        stravaContent.innerHTML = `
+          <div class="strava-profile">
+            <img src="${profile.profile || '/static/default-avatar.png'}" alt="Profile" class="strava-avatar" onerror="this.src='/static/default-avatar.png'">
+            <div class="strava-info">
+              <h3>${profile.firstname} ${profile.lastname}</h3>
+              <p><strong>@${profile.username || 'N/A'}</strong></p>
+              <p>📍 ${profile.city ? profile.city + ', ' : ''}${profile.state || ''} ${profile.country || ''}</p>
+              <p>🗓️ Member since ${formatDate(profile.created_at)}</p>
+            </div>
+          </div>
+        `;
+
+        // Show other sections
+        document.getElementById('strava-stats-section').style.display = 'block';
+        document.getElementById('strava-activities-section').style.display = 'block';
+
+        loadStravaStats();
+        loadStravaActivities();
+
+      } catch (error) {
+        document.getElementById('strava-content').innerHTML = `
+          <div class="error">Failed to load Strava profile: ${error.message}</div>
+        `;
+      }
+    }
+
+    // Load Strava stats
+    async function loadStravaStats() {
+      try {
+        const response = await fetch('/api/strava/stats');
+        const data = await response.json();
+
+        const statsContent = document.getElementById('strava-stats');
+
+        if (!data.connected) {
+          statsContent.innerHTML = '<div class="error">Failed to load stats</div>';
+          return;
+        }
+
+        const stats = data.stats;
+        statsContent.innerHTML = `
+          <h3>This Year</h3>
+          <div class="strava-stats">
+            <div class="stat-card">
+              <div class="stat-value">${Math.round(stats.ytd_run_totals.distance / 1000) || 0}</div>
+              <div class="stat-label">km Running</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.ytd_run_totals.count || 0}</div>
+              <div class="stat-label">Runs</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${Math.round(stats.ytd_ride_totals.distance / 1000) || 0}</div>
+              <div class="stat-label">km Cycling</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.ytd_ride_totals.count || 0}</div>
+              <div class="stat-label">Rides</div>
+            </div>
+          </div>
+          <h3>All Time</h3>
+          <div class="strava-stats">
+            <div class="stat-card">
+              <div class="stat-value">${Math.round(stats.all_run_totals.distance / 1000) || 0}</div>
+              <div class="stat-label">km Running</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.all_run_totals.count || 0}</div>
+              <div class="stat-label">Total Runs</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${Math.round(stats.all_ride_totals.distance / 1000) || 0}</div>
+              <div class="stat-label">km Cycling</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.all_ride_totals.count || 0}</div>
+              <div class="stat-label">Total Rides</div>
+            </div>
+          </div>
+        `;
+
+      } catch (error) {
+        document.getElementById('strava-stats').innerHTML = `
+          <div class="error">Failed to load stats: ${error.message}</div>
+        `;
+      }
+    }
+
+    // Load recent activities
+    async function loadStravaActivities() {
+      try {
+        const response = await fetch('/api/strava/recent-activities');
+        const data = await response.json();
+
+        const activitiesContent = document.getElementById('strava-activities');
+
+        if (!data.connected) {
+          activitiesContent.innerHTML = '<div class="error">Failed to load activities</div>';
+          return;
+        }
+
+        if (data.activities.length === 0) {
+          activitiesContent.innerHTML = '<p>No recent activities found.</p>';
+          return;
+        }
+
+        const activitiesHtml = `
+          <div class="activities-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Activity</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Distance</th>
+                  <th>Time</th>
+                  <th>Avg Speed</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.activities.map(activity => `
+                  <tr>
+                    <td><strong>${activity.name}</strong></td>
+                    <td>${activity.type}</td>
+                    <td>${formatDate(activity.start_date)}</td>
+                    <td>${activity.distance} km</td>
+                    <td>${formatTime(activity.moving_time)}</td>
+                    <td>${activity.average_speed} km/h</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        activitiesContent.innerHTML = activitiesHtml;
+
+      } catch (error) {
+        document.getElementById('strava-activities').innerHTML = `
+          <div class="error">Failed to load activities: ${error.message}</div>
+        `;
+      }
+    }
+
+    // Load Strava data when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStravaProfile();
+    });
+  </script>
+</body>
+</html>

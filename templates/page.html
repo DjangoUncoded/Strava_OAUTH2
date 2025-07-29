@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Social Blog</title>
+  <style>
+    body { font-family: sans-serif; margin:0; padding:0; background:#f4f4f4 }
+    header { background:#333; color:#fff; padding:1rem; text-align:center }
+    #newPost { padding:1rem; background:#fff; margin:1rem auto; width:90%; max-width:600px; }
+    #feed { margin:1rem auto; width:90%; max-width:600px; }
+    .post { background:#fff; padding:1rem; margin-bottom:1rem; border-radius:4px; }
+    .post h3 { margin:0 0 .5rem }
+    .post p { margin:0 .3rem }
+    .post time { font-size:.8rem; color:#666 }
+    .btn { padding:.5rem 1rem; border:none; background:#28a; color:#fff; border-radius:3px; cursor:pointer }
+    .btn:hover { background:#159 }
+    textarea, input[type="text"] { width:100%; padding:.5rem; margin:.5rem 0; box-sizing:border-box }
+  </style>
+</head>
+<body>
+  <header><h1>My Social Blog</h1></header>
+
+  <section id="newPost">
+    <h2>Create a Post</h2>
+    <input type="text" id="titleInput" placeholder="Post title">
+    <textarea id="bodyInput" rows="4" placeholder="Write something..."></textarea>
+    <button class="btn" id="postBtn">Post</button>
+  </section>
+
+  <section id="feed">
+    <h2>Feed</h2>
+    <!-- posts will appear here -->
+  </section>
+
+  <script>
+    const postBtn = document.getElementById('postBtn');
+    const titleInput = document.getElementById('titleInput');
+    const bodyInput = document.getElementById('bodyInput');
+    const feed = document.getElementById('feed');
+
+    postBtn.addEventListener('click', () => {
+      const title = titleInput.value.trim();
+      const body = bodyInput.value.trim();
+      if (!title || !body) return alert('Enter title and body!');
+      const postEl = document.createElement('div');
+      postEl.className = 'post';
+      postEl.innerHTML = \`
+        <h3>\${title}</h3>
+        <p>\${body}</p>
+        <time>\${new Date().toLocaleString()}</time>
+      \`;
+      feed.prepend(postEl);
+      titleInput.value = '';
+      bodyInput.value = '';
+    });
+  </script>
+</body>
+</html>

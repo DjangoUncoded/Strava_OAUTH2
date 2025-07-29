@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <form method="post" action="/logout">
+
+        <button type="submit">Logout</button>
+    </form>
+    {% if error %}
+    <div style="color: red">{{ error }}</div>
+    {% endif %}
+</body>
+</html>
