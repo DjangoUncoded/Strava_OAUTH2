@@ -10,3 +10,4 @@ pydantic>=1.10.0
 pytest>=6.2.4
 starlette
 httpx
+pymysql
